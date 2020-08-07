@@ -1,35 +1,174 @@
 ---
 title: 'Peer-graded Assignment: Prediction Assignment Writeup'
-author: P.I.N.Kehelbedda, Department of Statistics and Computer Science, Faculty of
-  Science, University of Peradeniya
+author: P.I.N.Kehelbedda
 date: "8/7/2020"
-output: html_document
+output: 
+      html_document:
+            number_sections: true
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+# Goal
+
+The goal of your project is to predict the manner in which they did the exercise. This is the "classes" variable in the training set. You may use any of the other variables to predict with. You should create a report describing how you built your model, how you used cross validation, what you think the expected out of sample error is, and why you made the choices you did. You will also use your prediction model to predict 20 different test cases.
+  
+  
+# Data
+
+Required R packages, 
+```{r, message=FALSE, warning=FALSE}
+library(lattice)
+library(ggplot2)
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(corrplot)
+library(rattle)
+library(randomForest)
+library(RColorBrewer)
+
+set.seed(1813)    #1813
+```
+
+
+We have training data and test data. Let's load them.
+```{r}
+url_train <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+url_quiz  <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+
+data_train <- read.csv(url(url_train), strip.white = TRUE, na.strings = c("NA",""))
+data_quiz  <- read.csv(url(url_quiz),  strip.white = TRUE, na.strings = c("NA",""))
+
+dim(data_train)
+dim(data_quiz)
+```
+
+
+# Analysis
+
+## Preprocessing
+
+Splitting data(75% training and 25% testing).
+```{r}
+in_train  <- createDataPartition(data_train$classe, p=0.75, list=FALSE)
+train_set <- data_train[ in_train, ]
+test_set  <- data_train[-in_train, ]
+
+dim(train_set)
+dim(test_set)
+```
+
+Dealing with NA values(remove variables with NA).
+```{r}
+nzv_var <- nearZeroVar(train_set)
+
+train_set <- train_set[ , -nzv_var]
+test_set  <- test_set [ , -nzv_var]
+
+dim(train_set)
+dim(test_set)
+```
+
+Remove variables that are mostly NA. A threshlod of 95 % is selected.
+```{r}
+na_var <- sapply(train_set, function(x) mean(is.na(x))) > 0.95
+train_set <- train_set[ , na_var == FALSE]
+test_set  <- test_set [ , na_var == FALSE]
+
+dim(train_set)
+dim(test_set)
+```
+
+Since columns 1 to 5 are identification variables only, they will be removed as well.
+```{r}
+train_set <- train_set[ , -(1:5)]
+test_set  <- test_set [ , -(1:5)]
+
+dim(train_set)
+dim(test_set)
+```
+
+The number of variables for the analysis has been reduced from the original 160 down to 54
+
+## Correlation Analysis
+
+Perform a correlation analysis between the variables before the modeling work itself is done. Select “FPC” for the first principal component order.
+
+```{r}
+corr_matrix <- cor(train_set[ , -54])
+corrplot(corr_matrix, order = "FPC", method = "circle", type = "lower",
+         tl.cex = 0.6, tl.col = rgb(0, 0, 0))
+```
+
+If two variables are highly correlated their colors are either dark blue (for a positive correlation) or dark red (for a negative corraltions). To further reduce the number of variables, a Principal Components Analysis (PCA) could be performed as the next step. However, since there are only very few strong correlations among the input variables, the PCA will not be performed. Instead, a few different prediction models will be built next.
+
+
+## Model Training
+
+### Decision Tree Model
+
+```{r}
+set.seed(1813)
+fit_decision_tree <- rpart(classe ~ ., data = train_set, method="class")
+fancyRpartPlot(fit_decision_tree)
+```
+
+Predictions of the decision tree model on test_set.
+
+```{r}
+predict_decision_tree <- predict(fit_decision_tree, newdata = test_set, type="class")
+# conf_matrix_decision_tree <- confusionMatrix(predict_decision_tree, test_set$classe)
+# conf_matrix_decision_tree
+confusionMatrix(data = predict_decision_tree, reference = factor(test_set$classe))
+```
+
+
+### Generalized Boosted Model (GBM)
+
+```{r}
+set.seed(1813)
+ctrl_GBM <- trainControl(method = "repeatedcv", number = 5, repeats = 2)
+fit_GBM  <- train(classe ~ ., data = train_set, method = "gbm",
+                  trControl = ctrl_GBM, verbose = FALSE)
+fit_GBM$finalModel
+```
+
+Predictions of the GBM on test_set.
+```{r}
+predict_GBM <- predict(fit_GBM, newdata = test_set)
+# conf_matrix_GBM <- confusionMatrix(predict_GBM, test_set$classe)
+# conf_matrix_GBM
+confusionMatrix(predict_GBM, factor(test_set$classe))
+```
 
 
 
+### Random Forest Model
+
+```{r}
+set.seed(1813)
+ctrl_RF <- trainControl(method = "repeatedcv", number = 5, repeats = 2)
+fit_RF  <- train(classe ~ ., data = train_set, method = "rf",
+                  trControl = ctrl_RF, verbose = FALSE)
+fit_RF$finalModel
+```
+
+Predictions of the Random Forest model on test_set.
+```{r}
+predict_RF <- predict(fit_RF, newdata = test_set)
+# conf_matrix_RF <- confusionMatrix(predict_RF, test_set$classe)
+# conf_matrix_RF
+confusionMatrix(predict_RF, factor(test_set$classe))
+```
 
 
+# For Quiz
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+```{r}
+predict_quiz <- predict(fit_RF, newdata = data_quiz)
+predict_quiz
+```
 
