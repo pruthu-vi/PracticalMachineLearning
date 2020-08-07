@@ -1,0 +1,35 @@
+---
+title: 'Peer-graded Assignment: Prediction Assignment Writeup'
+author: P.I.N.Kehelbedda, Department of Statistics and Computer Science, Faculty of
+  Science, University of Peradeniya
+date: "8/7/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
